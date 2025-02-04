@@ -1,1 +1,66 @@
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.datasets import load_breast_cancer
 
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def compute_loss(y_true, y_pred):
+    return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+def logistic_regression_sgd(X, y, batch_size=32, learning_rate=0.01, max_iters=1000):
+    n_samples, n_features = X.shape
+    weights = np.random.randn(n_features)
+    bias = np.random.randn()
+    
+    for _ in range(max_iters):
+        indices = np.random.permutation(n_samples)
+        X_shuffled, y_shuffled = X[indices], y[indices]
+        
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
+            X_batch, y_batch = X_shuffled[start:end], y_shuffled[start:end]
+            
+            linear_model = np.dot(X_batch, weights) + bias
+            y_pred = sigmoid(linear_model)
+            
+            grad_w = np.dot(X_batch.T, (y_pred - y_batch)) / batch_size
+            grad_b = np.mean(y_pred - y_batch)
+            
+            weights -= learning_rate * grad_w
+            bias -= learning_rate * grad_b
+            
+    return weights, bias
+
+def evaluate_model(X, y, weights, bias):
+    y_pred_prob = sigmoid(np.dot(X, weights) + bias)
+    y_pred = (y_pred_prob > 0.5).astype(int)
+    
+    accuracy = accuracy_score(y, y_pred)
+    precision = precision_score(y, y_pred)
+    recall = recall_score(y, y_pred)
+    f1 = f1_score(y, y_pred)
+    
+    print(f"Accuracy: {accuracy:.2f}")
+    print(f"Precision: {precision:.2f}")
+    print(f"Recall: {recall:.2f}")
+    print(f"F1 Score: {f1:.2f}")
+
+def main():
+    data = load_breast_cancer()
+    X_train, X_temp, y_train, y_temp = train_test_split(data.data, data.target, test_size=0.4, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    
+    print("Class distribution in training + validation set:")
+    unique, counts = np.unique(np.concatenate([y_train, y_val]), return_counts=True)
+    print(dict(zip(unique, counts)))
+    
+    print("Training logistic regression model...")
+    weights, bias = logistic_regression_sgd(X_train, y_train, batch_size=32, learning_rate=0.01, max_iters=1000)
+    
+    print("Evaluating model on test data...")
+    evaluate_model(X_test, y_test, weights, bias)
+
+if __name__ == "__main__":
+    main()
